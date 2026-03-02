@@ -753,8 +753,10 @@ def update_permit_info():
 
             if choice == '1':
                 parts[1] = input("Enter New Name: ").strip()
+                print("Record Updated Successfully.")
             elif choice == '2':
                 parts[2] = input("Enter New Plate: ").strip()
+                print("Record Updated Successfully.")
             elif choice == '3':
                 print("\nSelect New Type:")
                 print("1. Daily")
@@ -1046,3 +1048,4 @@ def main():
 if __name__ == "__main__":
 
     main()
+

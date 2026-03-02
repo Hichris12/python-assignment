@@ -654,7 +654,8 @@ def issue_permit():
     elif type_choice == '3':
         permit_type = "Annual"
     else:
-        permit_type = "Error"
+        print("Invalid Permit Type Selected.")
+        return
 
     # Validate Date Format
     expiry = input("Enter Expiry Date (YYYY-MM-DD): ").strip()
@@ -663,22 +664,17 @@ def issue_permit():
     except ValueError:
         print("Error: Invalid Date Format. Please use YYYY-MM-DD.")
         return
-
     status = "Active"
-
     if not permit_id or not name or not plate:
         print("Error: All Fields Are Required.")
         return
-
     new_record = f"{permit_id},{name},{plate},{permit_type},{expiry},{status}"
-
     try:
         with open(permits_filename, "a") as file:
             file.write(new_record + "\n")
         print(f"Permit '{permit_id}' Issued Successfully.")
     except Exception as e:
         print(f"An Error Occurred: {e}")
-
 
 def view_permit_list():
     # Read file first
@@ -688,7 +684,6 @@ def view_permit_list():
         print("\nNo Permit Records Found.")
         return
 
-    # --- NEW: Check for expiry notifications before showing list ---
     # This ensures the list displayed is always up-to-date
     lines = check_expiry_notifications(lines)
 
@@ -753,20 +748,34 @@ def update_permit_info():
             print("1. Update Name")
             print("2. Update Plate")
             print("3. Update Type")
-            choice = input("Enter Choice: ")
+            choice = input("Enter Choice: ").strip)_
 
             if choice == '1':
                 parts[1] = input("Enter New Name: ").strip()
+                print("Record Updated Successfully.")
             elif choice == '2':
                 parts[2] = input("Enter New Plate: ").strip()
+                print("Record Updated Successfully.")
             elif choice == '3':
-                parts[3] = input("Enter New Type: ").strip()
-
-            updated_lines.append(",".join(parts))
-            print("Record Updated Successfully.")
-        else:
-            updated_lines.append(line)
-
+                print("\nSelect New Type:")
+                print("1. Daily")
+                print("2. Monthly")
+                print("3. Annual")
+                type_choice = input("Enter Choice (1-3): ").strip()
+                # Map the number to the word
+                if type_choice == '1':
+                    parts[3] = "Daily"
+                elif type_choice == '2':
+                    parts[3] = "Monthly"
+                elif type_choice == '3':
+                    parts[3] = "Annual"
+                else:
+                    print("Invalid Choice. No update will be made.")
+                    continue  # Skip the success message if the choice was bad
+                print(f"Type updated to {parts[3]} successfully.")
+            else:
+                print("Invalid Choice. No update will be made.")
+        updated_lines.append(",".join(parts))
     if not found:
         print(f"Permit ID '{target_id}' Not Found.")
     else:
@@ -789,7 +798,11 @@ def cancel_permit():
             if confirm == 'y':
                 print(f"Permit '{target_id}' Removed.")
                 continue
+            elif confirm == 'n':
+                print("Deletion cancelled. Permit retained.")
+                updated_lines.append(line)
             else:
+                print("Invalid Choice. Please enter 'y' or 'n'.")
                 updated_lines.append(line)
         else:
             updated_lines.append(line)
@@ -799,9 +812,7 @@ def cancel_permit():
     else:
         write_permit_file(updated_lines)
 
-
 # MENU SYSTEM
-
 def permit_officer_menu():
     while True:
         print("PERMIT OFFICER MENU")
@@ -809,7 +820,7 @@ def permit_officer_menu():
         print("2. Renew Permit")
         print("3. Cancel Permit")
         print("4. Update Permit Information")
-        print("5. View Permit List (Check for Expiry)")  # Updated Label
+        print("5. View Permit List (Check for Expiry)")
         print("6. Back to Main Menu")
 
         choice = input("Enter your choice: ").strip()
@@ -1033,4 +1044,5 @@ def main():
 
 
 if __name__ == "__main__":
+
     main()

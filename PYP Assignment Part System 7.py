@@ -582,7 +582,6 @@ def write_permit_file(lines):
 
 
 # FEATURE FUNCTIONS ---
-
 def check_expiry_notifications(lines):
     """
     Internal function to check dates and notify if expired.
@@ -593,47 +592,38 @@ def check_expiry_notifications(lines):
     today = datetime.datetime.now().date()  # Get today's date
     notification_count = 0
     print("EXPIRY NOTIFICATIONS")
-
     for line in lines:
         parts = [p.strip() for p in line.split(',')]
         if len(parts) == 7:
             permit_id, name, plate, permit_type, issue_date, expiry_str, status = parts
-
             try:
                 # Convert string date (YYYY-MM-DD) to date object
                 expiry_date = datetime.datetime.strptime(expiry_str, "%Y-%m-%d").date()
-
                 # Check if expired and currently active
                 if expiry_date < today and status == "Active":
                     print(f"ALERT: Permit {permit_id} ({name}) EXPIRED on {expiry_str}!")
                     status = "Expired"  # Auto-update status
                     has_changes = True
                     notification_count += 1
-
                 # Reconstruct line with potentially new status
                 updated_lines.append(f"{permit_id},{name},{plate},{permit_type},{issue_date},{expiry_str},{status}")
-
             except ValueError:
                 # If date format is wrong, keep line as is
                 updated_lines.append(line)
         else:
             updated_lines.append(line)
-
     if notification_count == 0:
         print("No new expired permits found.")
-
     # Save updates to file if any statuses changed
     if has_changes:
         write_permit_file(updated_lines)
         return updated_lines
-
     return lines
 
 
 def issue_permit():
     print("Issue New Permit")
     permit_id = input("Enter Permit ID (e.g., P001): ").strip()
-
     # Check for duplicates
     current_permits = read_permit_file()
     for line in current_permits:
@@ -641,10 +631,8 @@ def issue_permit():
         if parts[0] == permit_id:
             print(f"Error: Permit ID '{permit_id}' Already Exists.")
             return
-
     name = input("Enter Owner Name: ").strip()
     plate = input("Enter Plate Number: ").strip()
-
     # --- NEW: Dynamically fetch permit types from Admin's file ---
     types_lines = read_file(TYPES_FILE)
     available_types = []
@@ -652,17 +640,13 @@ def issue_permit():
         parts = line.split(',')
         if len(parts) > 0:
             available_types.append(parts[0]) # Add the type name to our list
-
     if not available_types:
         print("Error: No permit types exist. Please ask Admin to add types first.")
         return
-
     print("\nSelect Type:")
     for i, t in enumerate(available_types, 1):
         print(f"{i}. {t}")
-        
     type_choice = input(f"Enter Choice (1-{len(available_types)}): ").strip()
-    
     try:
         choice_idx = int(type_choice) - 1
         if 0 <= choice_idx < len(available_types):
@@ -673,7 +657,6 @@ def issue_permit():
     except ValueError:
         print("Error: Please enter a valid number.")
         return
-
     # Validate Date Format
     expiry = input("Enter Expiry Date (YYYY-MM-DD): ").strip()
     try:
@@ -681,19 +664,13 @@ def issue_permit():
     except ValueError:
         print("Error: Invalid Date Format. Please use YYYY-MM-DD.")
         return
-        
     status = "Active"
-    
-    # --- NEW: Get today's date for issue_date ---
+    # --- Get today's date for issue_date ---
     issue_date = datetime.datetime.now().strftime("%Y-%m-%d")
-
     if not permit_id or not name or not plate:
         print("Error: All Fields Are Required.")
         return
-        
-    # --- NEW FORMAT: Now has 7 items instead of 6 ---
     new_record = f"{permit_id},{name},{plate},{permit_type},{issue_date},{expiry},{status}"
-    
     try:
         with open(permits_filename, "a") as file:
             file.write(new_record + "\n")
@@ -1082,5 +1059,6 @@ def main():
 if __name__ == "__main__":
 
     main()
+
 
 

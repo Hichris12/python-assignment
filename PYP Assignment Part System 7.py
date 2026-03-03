@@ -596,8 +596,8 @@ def check_expiry_notifications(lines):
 
     for line in lines:
         parts = [p.strip() for p in line.split(',')]
-        if len(parts) == 6:
-            permit_id, name, plate, permit_type, expiry_str, status = parts
+        if len(parts) == 7:
+            permit_id, name, plate, permit_type, issue_date, expiry_str, status = parts
 
             try:
                 # Convert string date (YYYY-MM-DD) to date object
@@ -611,7 +611,7 @@ def check_expiry_notifications(lines):
                     notification_count += 1
 
                 # Reconstruct line with potentially new status
-                updated_lines.append(f"{permit_id},{name},{plate},{permit_type},{expiry_str},{status}")
+                updated_lines.append(f"{permit_id},{name},{plate},{permit_type},{issue_date},{expiry_str},{status}")
 
             except ValueError:
                 # If date format is wrong, keep line as is
@@ -634,7 +634,7 @@ def issue_permit():
     print("Issue New Permit")
     permit_id = input("Enter Permit ID (e.g., P001): ").strip()
 
-    # Check for duplicates [cite: 47]
+    # Check for duplicates
     current_permits = read_permit_file()
     for line in current_permits:
         parts = [p.strip() for p in line.split(',')]
@@ -645,36 +645,61 @@ def issue_permit():
     name = input("Enter Owner Name: ").strip()
     plate = input("Enter Plate Number: ").strip()
 
-    print("Select Type: 1.Daily 2.Monthly 3.Annual")
-    type_choice = input("Enter Choice (1-3): ")
-    if type_choice == '1':
-        permit_type = "Daily"
-    elif type_choice == '2':
-        permit_type = "Monthly"
-    elif type_choice == '3':
-        permit_type = "Annual"
-    else:
-        print("Invalid Permit Type Selected.")
+    # --- NEW: Dynamically fetch permit types from Admin's file ---
+    types_lines = read_file(TYPES_FILE)
+    available_types = []
+    for line in types_lines:
+        parts = line.split(',')
+        if len(parts) > 0:
+            available_types.append(parts[0]) # Add the type name to our list
+
+    if not available_types:
+        print("Error: No permit types exist. Please ask Admin to add types first.")
         return
+
+    print("\nSelect Type:")
+    for i, t in enumerate(available_types, 1):
+        print(f"{i}. {t}")
+        
+    type_choice = input(f"Enter Choice (1-{len(available_types)}): ").strip()
+    
+    try:
+        choice_idx = int(type_choice) - 1
+        if 0 <= choice_idx < len(available_types):
+            permit_type = available_types[choice_idx]
+        else:
+            print("Invalid Choice. Please select a valid number.")
+            return
+    except ValueError:
+        print("Error: Please enter a valid number.")
+        return
+
     # Validate Date Format
     expiry = input("Enter Expiry Date (YYYY-MM-DD): ").strip()
     try:
-        datetime.datetime.strptime(expiry, "%Y-%m-%d")  # Just checks format validity
+        datetime.datetime.strptime(expiry, "%Y-%m-%d") 
     except ValueError:
         print("Error: Invalid Date Format. Please use YYYY-MM-DD.")
         return
+        
     status = "Active"
+    
+    # --- NEW: Get today's date for issue_date ---
+    issue_date = datetime.datetime.now().strftime("%Y-%m-%d")
+
     if not permit_id or not name or not plate:
         print("Error: All Fields Are Required.")
         return
-    new_record = f"{permit_id},{name},{plate},{permit_type},{expiry},{status}"
+        
+    # --- NEW FORMAT: Now has 7 items instead of 6 ---
+    new_record = f"{permit_id},{name},{plate},{permit_type},{issue_date},{expiry},{status}"
+    
     try:
         with open(permits_filename, "a") as file:
             file.write(new_record + "\n")
         print(f"Permit '{permit_id}' Issued Successfully.")
     except Exception as e:
         print(f"An Error Occurred: {e}")
-
 
 def view_permit_list():
     # Read file first
@@ -689,14 +714,14 @@ def view_permit_list():
     lines = check_expiry_notifications(lines)
 
     print("\n--- Permit List ---")
-    print(f"{'ID':<10} {'Owner':<15} {'Plate':<12} {'Type':<10} {'Expiry':<12} {'Status':<10}")
-    print("-" * 75)
+    print(f"{'ID':<10} {'Owner':<15} {'Plate':<12} {'Type':<10} {'Issued':<12} {'Expiry':<12} {'Status':<10}")
+    print("-" * 85) # Made the line slightly longer
 
     for line in lines:
         parts = [p.strip() for p in line.split(',')]
-        if len(parts) == 6:
-            permit_id, name, plate, permit_type, expiry, status = parts
-            print(f"{permit_id:<10} {name:<15} {plate:<12} {permit_type:<10} {expiry:<12} {status:<10}")
+        if len(parts) == 7: # Changed to 7
+            permit_id, name, plate, permit_type, issue_date, expiry, status = parts
+            print(f"{permit_id:<10} {name:<15} {plate:<12} {permit_type:<10} {issue_date:<12} {expiry:<12} {status:<10}")
 
 
 def renew_permit():
@@ -711,14 +736,13 @@ def renew_permit():
         parts = [p.strip() for p in line.split(',')]
         if parts[0] == target_id:
             found = True
-            print(f"Current Expiry: {parts[4]}")
+            print(f"Current Expiry: {parts[5]}")
             new_expiry = input("Enter New Expiry Date (YYYY-MM-DD): ").strip()
 
-            # Date Validation
             try:
                 datetime.datetime.strptime(new_expiry, "%Y-%m-%d")
-                parts[4] = new_expiry
-                parts[5] = "Active"  # Reactivate if it was expired
+                parts[5] = new_expiry
+                parts[6] = "Active"
                 updated_lines.append(",".join(parts))
                 print(f"Permit '{target_id}' Renewed Successfully.")
             except ValueError:
@@ -758,30 +782,39 @@ def update_permit_info():
                 parts[2] = input("Enter New Plate: ").strip()
                 print("Record Updated Successfully.")
             elif choice == '3':
-                print("\nSelect New Type:")
-                print("1. Daily")
-                print("2. Monthly")
-                print("3. Annual")
-                type_choice = input("Enter Choice (1-3): ").strip()
-                # Map the number to the word
-                if type_choice == '1':
-                    parts[3] = "Daily"
-                elif type_choice == '2':
-                    parts[3] = "Monthly"
-                elif type_choice == '3':
-                    parts[3] = "Annual"
+                # --- NEW: Dynamically fetch permit types ---
+                types_lines = read_file(TYPES_FILE)
+                available_types = []
+                for t_line in types_lines:
+                    t_parts = t_line.split(',')
+                    if len(t_parts) > 0:
+                        available_types.append(t_parts[0])
+                
+                if not available_types:
+                    print("No permit types available. Ask Admin to add types.")
                 else:
-                    print("Invalid Choice. No update will be made.")
-                    continue  # Skip the success message if the choice was bad
-                print(f"Type updated to {parts[3]} successfully.")
+                    print("\nSelect New Type:")
+                    for i, t in enumerate(available_types, 1):
+                        print(f"{i}. {t}")
+                        
+                    type_choice = input(f"Enter Choice (1-{len(available_types)}): ").strip()
+                    try:
+                        choice_idx = int(type_choice) - 1
+                        if 0 <= choice_idx < len(available_types):
+                            parts[3] = available_types[choice_idx]
+                            print(f"Type updated to {parts[3]} successfully.")
+                        else:
+                            print("Invalid Choice. No update will be made.")
+                    except ValueError:
+                        print("Error: Please enter a valid number.")
             else:
                 print("Invalid Choice. No update will be made.")
         updated_lines.append(",".join(parts))
+        
     if not found:
         print(f"Permit ID '{target_id}' Not Found.")
     else:
         write_permit_file(updated_lines)
-
 
 def cancel_permit():
     print("Cancel Permit")
@@ -911,11 +944,13 @@ def view_permit_status():
         with open(PERMITS_FILE, "r") as f:
             for line in f:
                 data = line.strip().split(',')
-                if len(data) >= 5 and data[2] == plate:
+                # Changed from >= 5 to >= 7 because we now have 7 fields
+                if len(data) >= 7 and data[2] == plate:
                     print("\nPermit Found:")
                     print(f"Type: {data[3]}")
-                    print(f"Expiry: {data[4]}")
-                    status = data[5] if len(data) > 5 else "Active"
+                    print(f"Issued: {data[4]}") # Added the new Issue Date field
+                    print(f"Expiry: {data[5]}") # Shifted index from 4 to 5
+                    status = data[6] if len(data) > 6 else "Active" # Shifted index from 5 to 6
                     print(f"Status: {status}")
                     found = True
 
@@ -924,7 +959,6 @@ def view_permit_status():
 
     except Exception as e:
         print(f"Error reading permits: {e}")
-
 
 def request_permit():
     """
@@ -1048,4 +1082,5 @@ def main():
 if __name__ == "__main__":
 
     main()
+
 

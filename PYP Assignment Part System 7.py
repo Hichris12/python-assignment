@@ -630,36 +630,45 @@ def issue_permit():
         parts = req.split(',')
         print(f"{i}. Plate: {parts[0]:<10} | Type: {parts[1]:<10} | Date Requested: {parts[2]}")
     # Officer selects a request to approve
-    choice = input("\nSelect a request to approve (or 0 to cancel): ").strip()
-    if choice == '0':
-        return
-    try:
-        choice_idx = int(choice) - 1
-        if choice_idx < 0 or choice_idx >= len(valid_requests):
-            print("Error: Invalid selection.")
+    while True:
+        choice = input("\nSelect a request to approve (or 0 to cancel): ").strip()
+        if choice == '0':
             return
-    except ValueError:
-        print("Error: Please enter a valid number.")
-        return
+        try:
+            choice_idx = int(choice) - 1
+            if 0 <= choice_idx < len(valid_requests):
+                break  # Valid input, break out of the loop
+            else:
+                print("Error: Invalid selection. Please pick a number from the list.")
+        except ValueError:
+            print("Error: Please enter a valid number.")
     # Extract the data from the chosen request
     selected_req = valid_requests[choice_idx]
     parts = selected_req.split(',')
     req_plate = parts[0]
     req_type = parts[1]
     print(f"\n--- Approving Permit for Plate: {req_plate} ---")
-    # Officer inputs the remaining manual details
-    permit_id = input("Enter New Permit ID (e.g., P001): ").strip()
-    # Check for duplicate Permit IDs
+   # Officer inputs the remaining manual details
     current_permits = read_permit_file()
-    for line in current_permits:
-        p_parts = [p.strip() for p in line.split(',')]
-        if len(p_parts) > 0 and p_parts[0] == permit_id:
-            print(f"Error: Permit ID '{permit_id}' Already Exists.")
-            return
+    while True:
+        permit_id = input("Enter New Permit ID (e.g., P001): ").strip().upper() 
+        if not permit_id:
+            print("Error: Permit ID cannot be empty.")
+            continue
+        is_duplicate = False
+        for line in current_permits:
+            p_parts = [p.strip() for p in line.split(',')]
+            if len(p_parts) > 0 and p_parts[0] == permit_id:
+                is_duplicate = True
+                brea
+        if is_duplicate:
+            print(f"Error: Permit ID '{permit_id}' Already Exists. Please try another.")
+        else:
+            break  # Unique ID found, break out of the loop
     name = input("Enter Owner Name: ").strip()
-    if not permit_id or not name:
-        print("Error: Permit ID and Name are required.")
-        return
+    while not name:
+        print("Error: Name cannot be empty.")
+        name = input("Enter Owner Name: ").strip()
     # Automatically Calculate Dates
     issue_date_obj = datetime.datetime.now()
     issue_date = issue_date_obj.strftime("%Y-%m-%d")
@@ -671,7 +680,7 @@ def issue_permit():
     elif req_type.lower() == "annual":
         expiry_obj = issue_date_obj + datetime.timedelta(days=365)
     else:
-        expiry_obj = issue_date_obj + datetime.timedelta(days=1) # Fallback
+        expiry_obj = issue_date_obj + datetime.timedelta(days=1)
     expiry = expiry_obj.strftime("%Y-%m-%d")
     status = "Active"
     # Save the new permit to permits.txt
@@ -720,8 +729,7 @@ def view_permit_list():
 
 def renew_permit():
     print("\n--- Renew Permit ---")
-    target_id = input("Enter Permit ID To Renew: ").strip()
-
+    target_id = input("Enter Permit ID To Renew: ").strip().upper()
     lines = read_permit_file()
     updated_lines = []
     found = False
@@ -732,6 +740,11 @@ def renew_permit():
             permit_type = parts[3]
             print(f"Current Expiry: {parts[5]} | Type: {permit_type}")
             confirm = input("Do you want to process this renewal? (y/n): ").strip().lower()
+            while True:
+                confirm = input("Do you want to process this renewal? (y/n): ").strip().lower()
+                if confirm in ['y', 'n']:
+                    break
+                print("Invalid input. Please type 'y' for yes or 'n' for no.")
             if confirm == 'y':
                 # Auto-calculate new date from today
                 today_obj = datetime.datetime.now()
@@ -760,7 +773,7 @@ def renew_permit():
 
 def update_permit_info():
     print("\n--- Update Permit Info ---")
-    target_id = input("Enter Permit ID To Update: ").strip()
+    target_id = input("Enter Permit ID To Update: ").strip().upper()
 
     lines = read_permit_file()
     updated_lines = []
@@ -833,17 +846,20 @@ def update_permit_info():
 
 def cancel_permit():
     print("\n--- Cancel Permit ---")
-    target_id = input("Enter Permit ID To Cancel: ").strip()
-
+    target_id = input("Enter Permit ID To Cancel: ").strip().upper()
     lines = read_permit_file()
     updated_lines = []
     found = False
-
     for line in lines:
         parts = [p.strip() for p in line.split(',')]
         if len(parts) >= 7 and parts[0] == target_id:
             found = True
             confirm = input(f"Are you sure you want to cancel {target_id}? (y/n): ").lower()
+            while True:
+                confirm = input(f"Are you sure you want to cancel {target_id}? (y/n): ").strip().lower()
+                if confirm in ['y', 'n']:
+                    break
+                print("Invalid input. Please type 'y' for yes or 'n' for no.")
             if confirm == 'y':
                 parts[6] = "Cancelled" # Soft delete instead of removing line
                 print(f"Permit '{target_id}' Status changed to Cancelled.")
@@ -1095,6 +1111,7 @@ def main():
 if __name__ == "__main__":
 
     main()
+
 
 
 

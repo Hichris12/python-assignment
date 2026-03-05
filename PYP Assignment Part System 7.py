@@ -761,7 +761,7 @@ def renew_permit():
         write_permit_file(updated_lines)
 
 def update_permit_info():
-    print("Update Permit Info")
+    print("\n--- Update Permit Info ---")
     target_id = input("Enter Permit ID To Update: ").strip()
 
     lines = read_permit_file()
@@ -1097,6 +1097,7 @@ def main():
 if __name__ == "__main__":
 
     main()
+
 
 
 

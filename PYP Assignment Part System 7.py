@@ -555,12 +555,11 @@ def staff_menu():
 
 
 # --- Global Variables ---
-permits_filename = "permits.txt"
 
 def read_permit_file():
     """Reads the permit file and returns a list of lines."""
     try:
-        with open(permits_filename, "r") as file:
+        with open(PERMITS_FILE, "r") as file:
             lines = [line.strip() for line in file if line.strip()]
         return lines
     except FileNotFoundError:
@@ -569,11 +568,10 @@ def read_permit_file():
         print(f"Error Reading File: {e}")
         return []
 
-
 def write_permit_file(lines):
     """Writes a list of lines back to the permit file."""
     try:
-        with open(permits_filename, "w") as file:
+        with open(PERMITS_FILE, "w") as file:
             file.write("\n".join(lines) + "\n")
         return True
     except Exception as e:
@@ -1097,6 +1095,7 @@ def main():
 if __name__ == "__main__":
 
     main()
+
 
 
 

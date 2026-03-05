@@ -660,7 +660,7 @@ def issue_permit():
             p_parts = [p.strip() for p in line.split(',')]
             if len(p_parts) > 0 and p_parts[0] == permit_id:
                 is_duplicate = True
-                brea
+                break
         if is_duplicate:
             print(f"Error: Permit ID '{permit_id}' Already Exists. Please try another.")
         else:
@@ -686,7 +686,7 @@ def issue_permit():
     # Save the new permit to permits.txt
     new_record = f"{permit_id},{name},{req_plate},{req_type},{issue_date},{expiry},{status}"
     try:
-        with open(permits_filename, "a") as file:
+        with open(PERMITS_FILE, "a") as file:
             file.write(new_record + "\n")
         print(f"Permit '{permit_id}' Issued Successfully!")
         print(f"Issue Date: {issue_date} | Expiry Date: {expiry}")
@@ -1111,6 +1111,7 @@ def main():
 if __name__ == "__main__":
 
     main()
+
 
 
 

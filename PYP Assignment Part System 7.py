@@ -900,7 +900,7 @@ def permit_officer_menu():
         elif choice == '5':
             view_permit_list()
         elif choice == '6':
-            main()
+            break
         else:
             print("Invalid Choice.")
 
@@ -1111,6 +1111,7 @@ def main():
 if __name__ == "__main__":
 
     main()
+
 
 
 

@@ -209,7 +209,7 @@ def update_permit_type():
 def show_simple_report():
     print("\n=== Parking System Report ===")
 
-    # 1. Parking Spaces Status
+
     spaces = read_file(SPACES_FILE)
     total_spaces = len(spaces)
     available = 0
@@ -224,38 +224,37 @@ def show_simple_report():
     print(f"Occupied: {occupied}")
     print(f"Unavailable/Reserved: {total_spaces - available - occupied}")
 
-    # 2. Total Active Permits
+
     permits = read_file(PERMITS_FILE)
     active_permits = 0
     for permit in permits:
         parts = permit.split(',')
-        if len(parts) >= 6 and parts[5].strip() == "Active":
+        if len(parts) >= 7 and parts[6].strip().lower() == "active":
             active_permits += 1
     print(f"\nTotal Active Permits: {active_permits}")
 
-    # 3. Revenue Calculation
     today = datetime.datetime.now().strftime("%Y-%m-%d")
     current_month = datetime.datetime.now().strftime("%Y-%m")
-    daily_revenue = 0.0
-    monthly_revenue = 0.0
+    daily_revenue_temp = 0.0
+    monthly_revenue_temp = 0.0
+    daily_revenue_permit = 0.0
+    monthly_revenue_permit = 0.0
 
-    # Part A: Revenue from Temporary Passes (from passes.txt)
     temp_passes = read_file(PASSES_FILE)
     for tp in temp_passes:
         parts = tp.split(',')
         if len(parts) >= 5:
-            issue_time = parts[2].strip()  # issue_time
+            issue_time = parts[2].strip()
             try:
-                tp_fee = float(parts[4].strip())  # fee 在第5字段
-                issue_date = issue_time[:10]  # YYYY-MM-DD
+                tp_fee = float(parts[4].strip())
+                issue_date = issue_time[:10]
                 if issue_date == today:
-                    daily_revenue += tp_fee
+                    daily_revenue_temp += tp_fee
                 if issue_date.startswith(current_month):
-                    monthly_revenue += tp_fee
+                    monthly_revenue_temp += tp_fee
             except ValueError:
                 continue
 
-    # Part B: Revenue from Active Permits (type price × count)
     type_prices = {}
     types = read_file(TYPES_FILE)
     for t in types:
@@ -266,28 +265,34 @@ def show_simple_report():
             except ValueError:
                 pass
 
-    type_counts = {"Daily": 0, "Monthly": 0, "Annual": 0}
+
     for permit in permits:
         parts = permit.split(',')
-        if len(parts) >= 6 and parts[5].strip() == "Active":
-            p_type = parts[3].strip()
-            if p_type in type_counts:
-                type_counts[p_type] += 1
+        if len(parts) >= 7 and parts[6].strip().lower() == "active":
+            try:
+                issue_date = parts[4].strip()
+                p_type = parts[3].strip()
+                price = type_prices.get(p_type, 0.0)
+                if price > 0:
+                    if issue_date == today:
+                        daily_revenue_permit += price
+                    if issue_date.startswith(current_month):
+                        monthly_revenue_permit += price
+            except ValueError:
+                continue
 
-    permit_revenue = 0.0
-    for p_type, count in type_counts.items():
-        price = type_prices.get(p_type, 0.0)
-        permit_revenue += count * price
-
-    # Total Revenue = Temporary Passes + Active Permits
-    total_revenue = monthly_revenue + permit_revenue
+    daily_total = daily_revenue_temp + daily_revenue_permit
+    monthly_total = monthly_revenue_temp + monthly_revenue_permit
 
     print(f"\nRevenue Summary:")
-    print(f"  Daily Revenue (from Temp Passes, today {today}): RM {daily_revenue:.2f}")
-    print(f"  Monthly Revenue (from Temp Passes, {current_month}): RM {monthly_revenue:.2f}")
-    print(f"  Revenue from Active Permits (fixed): RM {permit_revenue:.2f}")
-    print(f"Total Monthly Revenue: RM {total_revenue:.2f}")
+    print(f"  Daily Revenue from Temp Passes (today {today}): RM {daily_revenue_temp:.2f}")
+    print(f"  Daily Revenue from Active Permits (issued today): RM {daily_revenue_permit:.2f}")
+    print(f"  Total Daily Revenue: RM {daily_total:.2f}")
 
+    print(f"\n  Monthly Revenue from Temp Passes ({current_month}): RM {monthly_revenue_temp:.2f}")
+    print(f"  Monthly Revenue from Active Permits (issued this month): RM {monthly_revenue_permit:.2f}")
+    print(f"  Total Monthly Revenue: RM {monthly_total:.2f}")
+    
 def view_all():
     print("\nShow all Record")
 
@@ -1100,6 +1105,7 @@ def main():
 if __name__ == "__main__":
 
     main()
+
 
 
 

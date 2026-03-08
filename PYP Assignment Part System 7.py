@@ -815,6 +815,7 @@ def update_permit_info():
                                 new_exp = today_obj + datetime.timedelta(days=1)
                                 
                             parts[5] = new_exp.strftime("%Y-%m-%d")
+                            parts[6] = "Active"
                             print(f"Type updated to {new_type}. Expiry automatically adjusted to {parts[5]}.")
                         else:
                             print("Invalid Choice. No update will be made.")
@@ -1099,6 +1100,7 @@ def main():
 if __name__ == "__main__":
 
     main()
+
 
 
 

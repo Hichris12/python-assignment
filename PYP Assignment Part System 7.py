@@ -402,7 +402,7 @@ def record_entry():
 
 
 def record_exit():
-    print("\n=== RECORD VEHICLE EXIT ===")
+    print("RECORD VEHICLE EXIT")
     plate = input("Enter plate number: ").upper().strip()
     if not plate: return
 
@@ -1099,6 +1099,7 @@ def main():
 if __name__ == "__main__":
 
     main()
+
 
 
 

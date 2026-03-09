@@ -599,6 +599,35 @@ def check_expiry_notifications(lines):
         return updated_lines
     return lines
 
+def reserve_space_for_permit(plate, permit_type="Reserved"):
+    try:
+        spaces = read_file(SPACES_FILE)
+        new_spaces = []
+        assigned_space = None
+
+        for line in spaces:
+            parts = line.strip().split(',')
+            if len(parts) >= 3:
+                space_id, space_type, status = parts[0], parts[1], parts[2]
+
+                # Look for an available Reserved space
+                if space_type == "Reserved" and status == "Available" and assigned_space is None:
+                    assigned_space = space_id
+                    new_spaces.append(f"{space_id},{space_type},Reserved")  # Change status
+                else:
+                    new_spaces.append(line)
+            else:
+                new_spaces.append(line)
+
+        if assigned_space:
+            write_file(SPACES_FILE, new_spaces)
+            print(f"Auto-reserved parking space for permit: {assigned_space} (Reserved)")
+        else:
+            print("Warning: No available Reserved parking spaces! Please contact admin.")
+
+    except Exception as e:
+        print(f"Failed to reserve space: {e}")
+
 def issue_permit():
     print("\n--- Pending Permit Requests ---")
     # Fetch pending requests submitted by Vehicle Owners
@@ -680,7 +709,7 @@ def issue_permit():
             file.write(new_record + "\n")
         print(f"Permit '{permit_id}' Issued Successfully!")
         print(f"Issue Date: {issue_date} | Expiry Date: {expiry}")
-        # 7. Remove the approved request from requests.txt so it doesn't show up again
+        reserve_space_for_permit(req_plate, req_type)
         updated_requests = [req for req in requests if req != selected_req]
         write_file(REQUESTS_FILE, updated_requests)
     except Exception as e:
@@ -1105,6 +1134,7 @@ def main():
 if __name__ == "__main__":
 
     main()
+
 
 
 

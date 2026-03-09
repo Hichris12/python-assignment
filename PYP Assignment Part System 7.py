@@ -361,50 +361,107 @@ def check_availability():
 
 def record_entry():
     print("RECORD VEHICLE ENTRY")
-
-    plate = input("Enter plate number: ").upper()
-    if plate == "":
+    plate = input("Enter plate number: ").upper().strip()
+    if not plate:
         print("Error: Plate cannot be empty!")
         return
 
-    print("1. Regular  2. Electric  3. Reserved")
-    choice = input("Choose type: ")
+    Reserved Permit
+    has_valid_permit = False
+    permit_type = None
+    try:
+        permits = read_file(PERMITS_FILE)
+        today_str = datetime.date.today().strftime("%Y-%m-%d")
+        for line in permits:
+            parts = line.strip().split(',')
+            if len(parts) >= 7:
+                permit_plate = parts[2].strip()
+                status = parts[6].strip().lower()
+                expiry = parts[5].strip()
+                p_type = parts[3].strip()
+                if permit_plate == plate and status == "active" and expiry >= today_str:
+                    has_valid_permit = True
+                    permit_type = p_type 
+                    break
+    except Exception as e:
+        print(f"Warning: Cannot read permits file ({e}), treating as no permit.")
 
-    if choice == "1":
-        space_type = "Regular"
-    elif choice == "2":
-        space_type = "Electric"
-    elif choice == "3":
+    
+    if has_valid_permit:
         space_type = "Reserved"
+        print(f"→ Detected valid Reserved Permit for {plate}. Assigning Reserved space automatically.")
     else:
-        print("Invalid choice!")
+       
+        print("1. Regular   2. Electric   3. Reserved (only if you have a permit)")
+        choice = input("Choose type: ").strip()
+        if choice == "1":
+            space_type = "Regular"
+        elif choice == "2":
+            space_type = "Electric"
+        elif choice == "3":
+            space_type = "Reserved"
+            print("Note: Reserved spaces are intended for permit holders.")
+        else:
+            print("Invalid choice!")
+            return
+
+   
+    try:
+        lines = read_file(SPACES_FILE)
+    except:
+        print("Error: Cannot read spaces file!")
         return
 
-    lines = read_file(SPACES_FILE)
     space_id = None
     new_lines = []
+
+   
     for line in lines:
         parts = line.strip().split(',')
-        if len(parts) >= 3 and parts[1] == space_type and parts[2] == "Available":
-            space_id = parts[0]
-            new_lines.append(f"{parts[0]},{parts[1]},Occupied")
-        else:
+        if len(parts) >= 3 and parts[2].strip() == "Available":
+           
+            if has_valid_permit:
+                if parts[1].strip() == "Reserved":
+                    space_id = parts[0]
+                    new_lines.append(f"{parts[0]},{parts[1]},Occupied")
+                    break  
+            
+            else:
+                if parts[1].strip() == space_type:
+                    space_id = parts[0]
+                    new_lines.append(f"{parts[0]},{parts[1]},Occupied")
+                    break
+
+        
+        if space_id is None:
             new_lines.append(line)
 
-    if space_id == None:
+   
+    if space_id is None and has_valid_permit:
+        print("No Reserved spaces available! Falling back to any available space...")
+        for line in lines:  
+            parts = line.strip().split(',')
+            if len(parts) >= 3 and parts[2].strip() == "Available":
+                space_id = parts[0]
+                new_lines = [line if l.startswith(parts[0]+",") else l for l in lines]
+                new_lines = [f"{parts[0]},{parts[1]},Occupied" if l.startswith(parts[0]+",") else l for l in new_lines]
+                break
+
+    if space_id is None:
         print(f"No {space_type} spaces available!")
         return
 
+   
     write_file(SPACES_FILE, new_lines)
 
     time_now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
     add_line(VEHICLES_FILE, f"{plate},{time_now},{space_id}")
     add_line(LOGS_FILE, f"{plate},{time_now},Parked,{space_id},0")
 
-    print(f"\nSuccess! Assigned to {space_id}")
+    print(f"\nSuccess! Assigned to {space_id} ({space_type})")
     print(f"Entry time: {time_now}")
-
+    if has_valid_permit:
+        print("→ Used Reserved permit privilege.")
 
 def record_exit():
     print("RECORD VEHICLE EXIT")
@@ -1134,6 +1191,7 @@ def main():
 if __name__ == "__main__":
 
     main()
+
 
 
 

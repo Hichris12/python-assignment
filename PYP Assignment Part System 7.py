@@ -455,6 +455,9 @@ def record_entry():
     print(f"Entry time: {time_now}")
     if has_valid_permit:
         print("→ Used Reserved permit privilege.")
+
+
+
 def record_exit():
     print("RECORD VEHICLE EXIT")
     plate = input("Enter plate number: ").upper().strip()
@@ -497,6 +500,9 @@ def record_exit():
 
     print(f"\nSuccess! {plate} exited from {space_id}.")
     print(f"Exit time: {exit_time} | Fee: RM 5.00")
+
+
+
 
 def issue_pass():
     print("ISSUE TEMPORARY PASS")
@@ -545,6 +551,9 @@ def issue_pass():
     print(f"Valid until: {expiry_str} ({validity_days} days)")
     print(f"Full fee set: RM {full_fee:.2f}")
 
+
+
+
 def view_logs():
     print("TODAY'S LOGS")
 
@@ -558,6 +567,8 @@ def view_logs():
                 print(f"{parts[0]} - {parts[1]} - Space {parts[3]}")
     except:
         print("No logs found!")
+
+
 
 
 def staff_menu():
@@ -1183,6 +1194,7 @@ def main():
 if __name__ == "__main__":
 
     main()
+
 
 
 

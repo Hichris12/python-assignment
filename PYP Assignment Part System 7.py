@@ -526,8 +526,8 @@ def issue_pass():
 
     try:
         full_fee = float(full_fee_input)
-        if full_fee <= 0:
-            print("Full fee must be positive! Using default RM 5.00.")
+        if full_fee <= 4:
+            print("Full fee must be at least RM 5.00! Using default RM 5.00.")
             full_fee = 5.00
     except ValueError:
         print("Invalid fee! Using default RM 5.00.")
@@ -1194,6 +1194,7 @@ def main():
 if __name__ == "__main__":
 
     main()
+
 
 
 

@@ -459,47 +459,62 @@ def record_entry():
 
 
 def record_exit():
-    print("RECORD VEHICLE EXIT")
-    plate = input("Enter plate number: ").upper().strip()
-    if not plate: return
+    print("\n=== RECORD VEHICLE EXIT ===")
 
-   
-    logs = read_file(LOGS_FILE)
-    new_logs, found, entry_time, space_id = [], False, "", ""
-
-    for line in logs:
-        parts = line.strip().split(',')
-       
-        if not found and parts[0] == plate and parts[2] == "Parked":
-            found = True
-            entry_time = parts[1]
-            space_id = parts[3]
-            exit_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            
-            new_logs.append(f"{plate},{entry_time},{exit_time},{space_id},5.0")
-        else:
-            new_logs.append(line)
-
-    if not found:
-        print("Error: No active parking record found for this plate.")
+    plate = input("Enter plate number: ").upper()
+    if plate == "":
+        print("Error: Plate cannot be empty!")
         return
 
-   
+
+    lines = read_file(VEHICLES_FILE)
+    found = False
+    entry_time = ""
+    space_id = ""
+    new_lines = []
+
+    for line in lines:
+        parts = line.strip().split(',')
+        if parts[0] == plate:
+            found = True
+            entry_time = parts[1]
+            space_id = parts[2]
+        else:
+            new_lines.append(line)
+
+    if not found:
+        print("Vehicle not found!")
+        return
+
+
     spaces = read_file(SPACES_FILE)
     new_spaces = []
     for line in spaces:
-        if line.startswith(space_id + ","):
-            parts = line.split(',')
+        parts = line.strip().split(',')
+        if len(parts) >= 3 and parts[0] == space_id:
             new_spaces.append(f"{parts[0]},{parts[1]},Available")
         else:
             new_spaces.append(line)
 
-    
     write_file(SPACES_FILE, new_spaces)
+    write_file(VEHICLES_FILE, new_lines)
+
+    exit_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+
+    logs = read_file(LOGS_FILE)
+    new_logs = []
+    for line in logs:
+        parts = line.strip().split(',')
+        if len(parts) >= 5 and parts[0] == plate and parts[1] == entry_time:
+            new_logs.append(f"{plate},{entry_time},{exit_time},{space_id},0")
+        else:
+            new_logs.append(line)
+
     write_file(LOGS_FILE, new_logs)
 
-    print(f"\nSuccess! {plate} exited from {space_id}.")
-    print(f"Exit time: {exit_time} | Fee: RM 5.00")
+    print(f"\nSuccess! {plate} exited from {space_id}")
+    print(f"Exit time: {exit_time}")
 
 
 
@@ -1194,6 +1209,7 @@ def main():
 if __name__ == "__main__":
 
     main()
+
 
 
 

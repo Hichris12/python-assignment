@@ -651,24 +651,19 @@ def check_expiry_notifications(lines):
     notification_count = 0
     for line in lines:
         parts = [p.strip() for p in line.split(',')]
-        if len(parts) == 7:
-            permit_id, name, plate, permit_type, issue_date, expiry_str, status = parts
+            permit_id, name, plate, permit_type, issue_date, expiry_str, status = parts[:7]
             try:
                 expiry_date = datetime.datetime.strptime(expiry_str, "%Y-%m-%d").date()
-                # Only flag if it's currently Active and past its expiry date. 
-                # Ignore Cancelled or already Expired permits
                 if expiry_date < today and status.lower() == "active":
                     print(f"ALERT: Permit {permit_id} ({plate}) EXPIRED on {expiry_str}! Auto-updating status.")
-                    status = "Expired"
+                    parts[6] = "Expired"  # Update the specific status index
                     has_changes = True
                     notification_count += 1
-                updated_lines.append(f"{permit_id},{name},{plate},{permit_type},{issue_date},{expiry_str},{status}")
             except ValueError:
-                # If date format is somehow corrupted, keep line as is to prevent crashing
-                updated_lines.append(line)
+                pass
+            updated_lines.append(",".join(parts))
         else:
             updated_lines.append(line)
-    # Save updates to the text file in the background if statuses changed
     if has_changes:
         write_permit_file(updated_lines)
         return updated_lines
@@ -705,25 +700,17 @@ def reserve_space_for_permit(plate, permit_type="Reserved"):
 
 def issue_permit():
     print("\n--- Pending Permit Requests ---")
-    # Fetch pending requests submitted by Vehicle Owners
     requests = read_file(REQUESTS_FILE)
     if not requests:
         print("No pending requests found from Vehicle Owners.")
         return
-    # Filter out empty or corrupted lines
-    valid_requests = []
-    for req in requests:
-        parts = [p.strip() for p in req.split(',')]
-        if len(parts) >= 3:
-            valid_requests.append(req)
+    valid_requests = [req for req in requests if len(req.split(',')) >= 3]
     if not valid_requests:
         print("No valid pending requests.")
         return
-    # Display the requests for the Officer to choose from
     for i, req in enumerate(valid_requests, 1):
         parts = req.split(',')
         print(f"{i}. Plate: {parts[0]:<10} | Type: {parts[1]:<10} | Date Requested: {parts[2]}")
-    # Officer selects a request to approve
     while True:
         choice = input("\nSelect a request to approve (or 0 to cancel): ").strip()
         if choice == '0':
@@ -731,42 +718,32 @@ def issue_permit():
         try:
             choice_idx = int(choice) - 1
             if 0 <= choice_idx < len(valid_requests):
-                break  # Valid input, break out of the loop
+                break
             else:
                 print("Error: Invalid selection. Please pick a number from the list.")
         except ValueError:
             print("Error: Please enter a valid number.")
-    # Extract the data from the chosen request
     selected_req = valid_requests[choice_idx]
     parts = selected_req.split(',')
-    req_plate = parts[0]
-    req_type = parts[1]
+    req_plate, req_type = parts[0], parts[1]
     print(f"\n--- Approving Permit for Plate: {req_plate} ---")
-   # Officer inputs the remaining manual details
     current_permits = read_permit_file()
     while True:
-        permit_id = input("Enter New Permit ID (e.g., P001): ").strip().upper() 
+        permit_id = input("Enter New Permit ID (e.g., P001): ").strip().upper()
         if not permit_id:
             print("Error: Permit ID cannot be empty.")
             continue
-        is_duplicate = False
-        for line in current_permits:
-            p_parts = [p.strip() for p in line.split(',')]
-            if len(p_parts) > 0 and p_parts[0] == permit_id:
-                is_duplicate = True
-                break
+        is_duplicate = any(p.split(',')[0].strip() == permit_id for p in current_permits if len(p.split(',')) > 0)
         if is_duplicate:
             print(f"Error: Permit ID '{permit_id}' Already Exists. Please try another.")
         else:
-            break  # Unique ID found, break out of the loop
+            break
     name = input("Enter Owner Name: ").strip()
     while not name:
         print("Error: Name cannot be empty.")
         name = input("Enter Owner Name: ").strip()
-    # Automatically Calculate Dates
     issue_date_obj = datetime.datetime.now()
-    issue_date = issue_date_obj.strftime("%Y-%m-%d")
-    # Auto-add days based on the requested permit type
+    issue_date = issue_date_obj.strftime("%Y-%m-%d %H:%M:%S") 
     if req_type.lower() == "daily":
         expiry_obj = issue_date_obj + datetime.timedelta(days=1)
     elif req_type.lower() == "monthly":
@@ -777,13 +754,14 @@ def issue_permit():
         expiry_obj = issue_date_obj + datetime.timedelta(days=1)
     expiry = expiry_obj.strftime("%Y-%m-%d")
     status = "Active"
-    # Save the new permit to permits.txt
-    new_record = f"{permit_id},{name},{req_plate},{req_type},{issue_date},{expiry},{status}"
+    payment_status = "Paid" 
+    new_record = f"{permit_id},{name},{req_plate},{req_type},{issue_date},{expiry},{status},{payment_status}"
+    
     try:
         with open(PERMITS_FILE, "a") as file:
             file.write(new_record + "\n")
         print(f"Permit '{permit_id}' Issued Successfully!")
-        print(f"Issue Date: {issue_date} | Expiry Date: {expiry}")
+        print(f"Issue Time: {issue_date} | Expiry Date: {expiry} | Payment: {payment_status}")
         reserve_space_for_permit(req_plate, req_type)
         updated_requests = [req for req in requests if req != selected_req]
         write_file(REQUESTS_FILE, updated_requests)
@@ -795,31 +773,28 @@ def view_permit_list():
     if not lines:
         print("\nNo Permit Records Found.")
         return
-    # Automatically check for and update expired permits before displaying
     lines = check_expiry_notifications(lines)
-    print("\n" + "="*95)
-    print(f"{'ID':<8} | {'Owner':<15} | {'Plate':<10} | {'Type':<10} | {'Issued':<10} | {'Expiry':<10} | {'Status':<10}")
-    print("-" * 95)
-    active_count = 0
-    expired_count = 0
-    cancelled_count = 0
+    print("\n" + "=" * 105)
+    print(f"{'ID':<8} | {'Owner':<15} | {'Plate':<10} | {'Type':<10} | {'Issued':<20} | {'Expiry':<10} | {'Status':<10} | {'Payment'}")
+    print("-" * 105)
+    active_count, expired_count, cancelled_count = 0, 0, 0
     for line in lines:
         parts = [p.strip() for p in line.split(',')]
-        if len(parts) == 7:
-            permit_id, name, plate, permit_type, issue_date, expiry, status = parts
-            # Truncate long names to prevent the table from breaking format
+        # CHANGED: Check for >= 7 to prevent crashes and display payment status
+        if len(parts) >= 7:
+            permit_id, name, plate, permit_type, issue_date, expiry, status = parts[:7]
+            payment_status = parts[7] if len(parts) > 7 else "N/A"
             display_name = name[:12] + "..." if len(name) > 15 else name
-            print(f"{permit_id:<8} | {display_name:<15} | {plate:<10} | {permit_type:<10} | {issue_date:<10} | {expiry:<10} | {status:<10}")
-            # Tally up the statuses for the summary
+            print(f"{permit_id:<8} | {display_name:<15} | {plate:<10} | {permit_type:<10} | {issue_date:<20} | {expiry:<10} | {status:<10} | {payment_status}")
             if status.lower() == "active":
                 active_count += 1
             elif status.lower() == "expired":
                 expired_count += 1
             elif status.lower() == "cancelled":
                 cancelled_count += 1
-    print("-" * 95)
+    print("-" * 105)
     print(f"Total Permits: {len(lines)} (Active: {active_count}, Expired: {expired_count}, Cancelled: {cancelled_count})")
-    print("="*95)
+    print("=" * 105)
 
 def renew_permit():
     print("\n--- Renew Permit ---")
@@ -832,15 +807,13 @@ def renew_permit():
         if len(parts) >= 7 and parts[0] == target_id:
             found = True
             permit_type = parts[3]
-            print(f"Current Expiry: {parts[5]} | Type: {permit_type}")
-            confirm = input("Do you want to process this renewal? (y/n): ").strip().lower()
+            print(f"Current Expiry: {parts[5]} | Type: {permit_type}")  
             while True:
                 confirm = input("Do you want to process this renewal? (y/n): ").strip().lower()
                 if confirm in ['y', 'n']:
                     break
-                print("Invalid input. Please type 'y' for yes or 'n' for no.")
+                print("Invalid input. Please type 'y' for yes or 'n' for no.")      
             if confirm == 'y':
-                # Auto-calculate new date from today
                 today_obj = datetime.datetime.now()
                 if permit_type.lower() == "daily":
                     new_expiry_obj = today_obj + datetime.timedelta(days=1)
@@ -850,13 +823,18 @@ def renew_permit():
                     new_expiry_obj = today_obj + datetime.timedelta(days=365)
                 else:
                     new_expiry_obj = today_obj + datetime.timedelta(days=1)
-
                 parts[5] = new_expiry_obj.strftime("%Y-%m-%d")
-                parts[6] = "Active"  # Reactivate it if it was expired
-                print(f"Permit '{target_id}' Auto-Renewed Successfully until {parts[5]}.")
+                parts[6] = "Active"  
+                print("Payment Options: 1. Paid  2. Pending")
+                pay_choice = input("Select Payment Status (1/2): ").strip()
+                new_payment_status = "Paid" if pay_choice == '1' else "Pending"
+                if len(parts) > 7:
+                    parts[7] = new_payment_status
+                else:
+                    parts.append(new_payment_status)
+                print(f"Permit '{target_id}' Auto-Renewed Successfully until {parts[5]}. Payment Status: {new_payment_status}")
             else:
                 print("Renewal cancelled.")
-                
             updated_lines.append(",".join(parts))
         else:
             updated_lines.append(line)
@@ -1209,6 +1187,7 @@ def main():
 if __name__ == "__main__":
 
     main()
+
 
 
 

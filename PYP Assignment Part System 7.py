@@ -651,12 +651,13 @@ def check_expiry_notifications(lines):
     notification_count = 0
     for line in lines:
         parts = [p.strip() for p in line.split(',')]
+        if len(parts) >= 7:
             permit_id, name, plate, permit_type, issue_date, expiry_str, status = parts[:7]
             try:
                 expiry_date = datetime.datetime.strptime(expiry_str, "%Y-%m-%d").date()
                 if expiry_date < today and status.lower() == "active":
                     print(f"ALERT: Permit {permit_id} ({plate}) EXPIRED on {expiry_str}! Auto-updating status.")
-                    parts[6] = "Expired"  # Update the specific status index
+                    parts[6] = "Expired"
                     has_changes = True
                     notification_count += 1
             except ValueError:
@@ -668,7 +669,7 @@ def check_expiry_notifications(lines):
         write_permit_file(updated_lines)
         return updated_lines
     return lines
-
+    
 def reserve_space_for_permit(plate, permit_type="Reserved"):
     try:
         spaces = read_file(SPACES_FILE)
@@ -846,21 +847,18 @@ def renew_permit():
 def update_permit_info():
     print("\n--- Update Permit Info ---")
     target_id = input("Enter Permit ID To Update: ").strip().upper()
-
     lines = read_permit_file()
     updated_lines = []
     found = False
-
     for line in lines:
         parts = [p.strip() for p in line.split(',')]
-        if parts[0] == target_id:
+        if len(parts) >= 7 and parts[0] == target_id:
             found = True
             print(f"Current: {parts[1]} | {parts[2]} | {parts[3]}")
             print("1. Update Name")
             print("2. Update Plate")
             print("3. Update Type")
             choice = input("Enter Choice: ").strip()
-
             if choice == '1':
                 parts[1] = input("Enter New Name: ").strip()
                 print("Record Updated Successfully.")
@@ -868,29 +866,25 @@ def update_permit_info():
                 parts[2] = input("Enter New Plate: ").strip()
                 print("Record Updated Successfully.")
             elif choice == '3':
-                # Fetch permit types
                 types_lines = read_file(TYPES_FILE)
                 available_types = []
                 for t_line in types_lines:
                     t_parts = t_line.split(',')
                     if len(t_parts) > 0:
                         available_types.append(t_parts[0])
-                
                 if not available_types:
                     print("No permit types available.")
                 else:
                     print("\nSelect New Type:")
                     for i, t in enumerate(available_types, 1):
                         print(f"{i}. {t}")
-                        
                     type_choice = input(f"Enter Choice (1-{len(available_types)}): ").strip()
                     try:
                         choice_idx = int(type_choice) - 1
                         if 0 <= choice_idx < len(available_types):
                             new_type = available_types[choice_idx]
                             parts[3] = new_type
-                            
-                            # --- NEW: Auto-update expiry based on new type ---
+
                             today_obj = datetime.datetime.now()
                             if new_type.lower() == "daily":
                                 new_exp = today_obj + datetime.timedelta(days=1)
@@ -900,7 +894,6 @@ def update_permit_info():
                                 new_exp = today_obj + datetime.timedelta(days=365)
                             else:
                                 new_exp = today_obj + datetime.timedelta(days=1)
-                                
                             parts[5] = new_exp.strftime("%Y-%m-%d")
                             parts[6] = "Active"
                             print(f"Type updated to {new_type}. Expiry automatically adjusted to {parts[5]}.")
@@ -911,12 +904,11 @@ def update_permit_info():
             else:
                 print("Invalid Choice. No update will be made.")
         updated_lines.append(",".join(parts))
-        
     if not found:
         print(f"Permit ID '{target_id}' Not Found.")
     else:
         write_permit_file(updated_lines)
-
+        
 def cancel_permit():
     print("\n--- Cancel Permit ---")
     target_id = input("Enter Permit ID To Cancel: ").strip().upper()
@@ -1208,6 +1200,7 @@ def main():
 if __name__ == "__main__":
 
     main()
+
 
 
 

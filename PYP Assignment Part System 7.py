@@ -927,22 +927,43 @@ def cancel_permit():
         parts = [p.strip() for p in line.split(',')]
         if len(parts) >= 7 and parts[0] == target_id:
             found = True
-            confirm = input(f"Are you sure you want to cancel {target_id}? (y/n): ").lower()
+            plate_to_free = parts[2] # Get the plate number to free the space
             while True:
                 confirm = input(f"Are you sure you want to cancel {target_id}? (y/n): ").strip().lower()
                 if confirm in ['y', 'n']:
                     break
                 print("Invalid input. Please type 'y' for yes or 'n' for no.")
             if confirm == 'y':
-                parts[6] = "Cancelled" # Soft delete instead of removing line
+                parts[6] = "Cancelled"  
                 print(f"Permit '{target_id}' Status changed to Cancelled.")
+                try:
+                    spaces = read_file(SPACES_FILE)
+                    updated_spaces = []
+                    space_freed = False
+                    vehicles = read_file(VEHICLES_FILE)
+                    target_space_id = None
+                    for v in vehicles:
+                        v_parts = v.strip().split(',')
+                        if len(v_parts) >= 3 and v_parts[0] == plate_to_free:
+                            target_space_id = v_parts[2]
+                            break
+                    if target_space_id:
+                        for space_line in spaces:
+                            s_parts = space_line.strip().split(',')
+                            if len(s_parts) >= 3 and s_parts[0] == target_space_id and s_parts[1] == "Reserved":
+                                s_parts[2] = "Available"
+                                updated_spaces.append(",".join(s_parts))
+                                space_freed = True
+                            else:
+                                updated_spaces.append(space_line)
+                        if space_freed:
+                            write_file(SPACES_FILE, updated_spaces)
+                            print(f"Associated reserved space '{target_space_id}' has been freed.")
+                except Exception as e:
+                    print(f"Warning: Could not free space automatically: {e}")
             else:
                 print("Cancellation aborted. Permit retained.")
-                
-            updated_lines.append(",".join(parts))
-        else:
-            updated_lines.append(line)
-
+        updated_lines.append(",".join(parts))
     if not found:
         print(f"Permit ID '{target_id}' Not Found.")
     else:
@@ -1187,6 +1208,7 @@ def main():
 if __name__ == "__main__":
 
     main()
+
 
 
 

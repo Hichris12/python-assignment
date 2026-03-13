@@ -816,6 +816,7 @@ def renew_permit():
                 print("Invalid input. Please type 'y' for yes or 'n' for no.")      
             if confirm == 'y':
                 today_obj = datetime.datetime.now()
+                parts[4] = today_obj.strftime("%Y-%m-%d %H:%M:%S")
                 if permit_type.lower() == "daily":
                     new_expiry_obj = today_obj + datetime.timedelta(days=1)
                 elif permit_type.lower() == "monthly":
@@ -1200,6 +1201,7 @@ def main():
 if __name__ == "__main__":
 
     main()
+
 
 
 

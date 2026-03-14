@@ -103,12 +103,19 @@ def update_parking_space():
             print(f"Now: {parts[1]} Type, {parts[2]} Status")
 
             new_type = input("New Type (Press Enter To Maintain): ").strip().capitalize()
-            if new_type:
-                parts[1] = new_type
 
+            if new_type:
+                if new_type not in ["Regular", "Reserved", "Electric"]:
+                    print("Invalid Type, Please select in [(Regular),(Reserved),(Electric)]")
+                    return
+                parts[1] = new_type
             new_status = input("New status (available/occupied)(Press Enter To Maintain): ").strip().lower()
+
             if new_status:
-                parts[2] = new_status
+                if new_status not in ["available", "occupied"]:
+                    print("Invalid Status, Please select in [(Available),(Occupied)]")
+                    return
+                parts[2] = new_status.capitalize()
 
             new_line = ",".join(parts)
             new_lines.append(new_line)
@@ -222,7 +229,6 @@ def show_simple_report():
     print(f"Total Parking Spaces: {total_spaces}")
     print(f"Available: {available}")
     print(f"Occupied: {occupied}")
-    print(f"Unavailable/Reserved: {total_spaces - available - occupied}")
 
 
     permits = read_file(PERMITS_FILE)
@@ -294,15 +300,60 @@ def show_simple_report():
     print(f"  Total Monthly Revenue: RM {monthly_total:.2f}")
     
 def view_all():
-    print("\nShow all Record")
+    print("View All Records")
 
-    print("\nParking Space:")
-    for record in read_file(SPACES_FILE):
-        print(record)
+    print("\nPARKING SPACES")
+    spaces = read_file(SPACES_FILE)
+    if not spaces:
+        print("No parking spaces found.")
+    else:
+        print(f"{'Space ID':<12} {'Type':<12} {'Status':<10}")
+        for record in spaces:
+            parts = record.split(',')
+            if len(parts) >= 3:
+                print(f"{parts[0]:<12} {parts[1]:<12} {parts[2]:<10}")
+            else:
+                print(record)
 
-    print("\nPermit Type:")
-    for record in read_file(TYPES_FILE):
-        print(record)
+    print("\nPERMITS")
+    permits = read_file(PERMITS_FILE)
+    if not permits:
+        print("No permits found.")
+    else:
+        print(f"{'ID':<8} {'Owner':<15} {'Plate':<10} {'Type':<10} {'Issue Date':<12} {'Expiry':<12} {'Status':<10}")
+        for permit in permits:
+            parts = permit.split(',')
+            if len(parts) >= 7:
+                permit_id = parts[0]
+                name = parts[1][:12] + "..." if len(parts[1]) > 12 else parts[1]
+                plate = parts[2]
+                p_type = parts[3]
+                issue_date = parts[4]
+                expiry = parts[5]
+                status = parts[6]
+                print(f"{permit_id:<8} {name:<15} {plate:<10} {p_type:<10} {issue_date:<12} {expiry:<12} {status:<10}")
+            else:
+                print(permit)
+
+    print("\nPARKING LOGS (All History)")
+    logs = read_file(LOGS_FILE)
+    if not logs:
+        print("No parking logs found.")
+    else:
+        print(f"{'Plate':<10} {'Entry Time':<20} {'Exit Time':<20} {'Space ID':<10} {'Fee (RM)':<10}")
+        for log in logs:
+            parts = log.split(',')
+            if len(parts) >= 5:
+                plate = parts[0]
+                entry = parts[1]
+                exit_t = parts[2] if parts[2] != "Parked" else "Still Parked"
+                space = parts[3]
+                fee = parts[4] if len(parts) > 4 else "0.00"
+                print(f"{plate:<10} {entry:<20} {exit_t:<20} {space:<10} {fee:<10}")
+            else:
+                print(log)
+
+    print("End of All Records")
 
 
 def admin_menu():

@@ -9,7 +9,7 @@ PERMITS_FILE = "permits.txt"
 REQUESTS_FILE = "requests.txt"
 LOGS_FILE = "parking_logs.txt"
 PASSES_FILE = "temporary_passes.txt"
-FILE_REQUESTS = "requests.txt"
+
 
 # use file with try-except
 
@@ -1103,7 +1103,7 @@ def request_permit():
 
     # Write to the request file
     try:
-        with open(FILE_REQUESTS, "a") as f:
+        with open(REQUESTS_FILE, "a") as f:
             f.write(f"{plate},{p_type},{request_date}\n")
         print("Request submitted successfully.")
     except Exception as e:

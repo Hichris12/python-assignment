@@ -724,29 +724,18 @@ def check_expiry_notifications(lines):
 def reserve_space_for_permit(plate, permit_type="Reserved"):
     try:
         spaces = read_file(SPACES_FILE)
-        new_spaces = []
-        assigned_space = None
-
+        
         for line in spaces:
             parts = line.strip().split(',')
-            if len(parts) >= 3:
-                space_id, space_type, status = parts[0], parts[1], parts[2]
-
-                # Look for an available Reserved space
-                if space_type == "Reserved" and status == "Available" and assigned_space is None:
-                    assigned_space = space_id
-                    new_spaces.append(f"{space_id},{space_type},Reserved")  # Change status
-                else:
-                    new_spaces.append(line)
-            else:
-                new_spaces.append(line)
-
-        if assigned_space:
-            write_file(SPACES_FILE, new_spaces)
-            print(f"Auto-reserved parking space for permit: {assigned_space} (Reserved)")
-        else:
-            print("Warning: No available Reserved parking spaces! Please contact admin.")
-
+            
+            # Look for a Reserved space that is currently Available
+            if len(parts) >= 3 and parts[1] == "Reserved" and parts[2] == "Available":
+                print(f"Auto-reserved parking space for permit: {parts[0]} (Reserved)")
+                return  # Stop looking once we find one and print the message
+                
+        # If the loop finishes and didn't find anything:
+        print("Warning: No available Reserved parking spaces! Please contact admin.")
+        
     except Exception as e:
         print(f"Failed to reserve space: {e}")
 

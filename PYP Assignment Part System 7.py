@@ -630,7 +630,15 @@ def view_logs():
         for line in lines:
             if today in line:
                 parts = line.strip().split(',')
-                print(f"{parts[0]} - {parts[1]} - Space {parts[3]}")
+                entry_time = parts[1]
+                
+                # parts[2] is either "Parked" (still inside) or exit datetime
+                if parts[2] == "Parked":
+                    exit_info = "Still Parked"
+                else:
+                    exit_info = parts[2]
+                
+                print(f"{parts[0]} - Entry: {entry_time} - Exit: {exit_info} - Space {parts[3]}")
     except:
         print("No logs found!")
 

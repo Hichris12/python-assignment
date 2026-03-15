@@ -320,7 +320,7 @@ def view_all():
     if not permits:
         print("No permits found.")
     else:
-        print(f"{'ID':<8} {'Owner':<15} {'Plate':<10} {'Type':<10} {'Issue Date':<12} {'Expiry':<12} {'Status':<10}")
+        print(f"{'ID':<8} {'Owner':<15} {'Plate':<10} {'Type':<10} {'Issue Date':<12} {'Expiry':<19} {'Status':<10}")
         for permit in permits:
             parts = permit.split(',')
             if len(parts) >= 7:
